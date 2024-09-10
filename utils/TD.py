@@ -14,23 +14,29 @@ class TD:
             gamma: float, 
             alpha: float,
             epsilon: float,
+            random_state: int = None,
     ) -> None:
         self.n_iter = n_iter
-        self.P = P
         self.link = link
         self.inv_link = inv_link
         self.gamma = gamma
         self.alpha = alpha
         self.epsilon = epsilon
 
+        # Set seed
+        self.rng = np.random.default_rng(random_state)
+
+        # Ensure P matrix sums to one
+        if not np.allclose(self.P.sum(axis=1), 1):
+            raise ValueError("Each row of the transition matrix P must sum to 1.")
+        self.P = P
+
         self.weights = None
         self.bias = None
 
     def sample_next_state(self: Self, index: int) -> int:
         probs = self.P[index]
-
-        next = np.random.choice(range(self.P.shape[1]), p=probs)
-
+        next = self.rng.choice(range(self.P.shape[1]), p=probs)
         return int(next)
 
 
@@ -41,7 +47,7 @@ class TD:
 
         w = np.zeros(n_features + 1)
     
-        curr_index = int(np.random.randint(n_samples))
+        curr_index = self.rng.integers(low=0, high=n_samples)
         curr_x = X_bias[curr_index]
         curr_y = y[curr_index]
     
