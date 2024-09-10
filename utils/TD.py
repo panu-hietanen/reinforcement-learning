@@ -1,12 +1,11 @@
 import numpy as np
 from typing import Callable
-from typing_extensions import Self
 
 class TD:
     """Class to perform optimisation using generalised TD methods."""
 
     def __init__(
-            self: Self,
+            self,
             n_iter: int, 
             P: np.ndarray,
             link: Callable[[np.ndarray], np.ndarray], 
@@ -34,13 +33,13 @@ class TD:
         self.weights = None
         self.bias = None
 
-    def sample_next_state(self: Self, index: int) -> int:
+    def sample_next_state(self, index: int) -> int:
         probs = self.P[index]
         next = self.rng.choice(range(self.P.shape[1]), p=probs)
         return int(next)
 
 
-    def fit(self: Self, X: np.ndarray, y: np.ndarray) -> None:
+    def fit(self, X: np.ndarray, y: np.ndarray) -> None:
         n_samples, n_features = X.shape
 
         X_bias = np.c_[np.ones(n_samples), X]
@@ -84,13 +83,13 @@ class TD:
         self.bias = w[0]
 
 
-    def predict(self: Self, X: np.ndarray) -> np.ndarray:
+    def predict(self, X: np.ndarray) -> np.ndarray:
         if self.weights is None:
             raise TDError("Please use the fit function first!")
         return np.dot(X, self.weights) + self.bias
     
 
-    def rmse(self: Self, X: np.ndarray, y: np.ndarray) -> float:
+    def rmse(self, X: np.ndarray, y: np.ndarray) -> float:
         if self.weights is None:
             raise TDError("Please use the fit function first!")
         y_hat = self.predict(X)
