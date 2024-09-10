@@ -1,6 +1,8 @@
 """
 Code containing a class for performing standardised Temporal Difference learning.
 
+Uses methods from https://arxiv.org/abs/2404.15518v3
+
 Date: 10/9/24
 Author: Panu Hietanen
 """
@@ -9,10 +11,7 @@ import numpy as np
 from typing import Callable
 
 class TD:
-    """Class to perform optimisation using generalised TD methods.
-    
-    Uses methods from https://arxiv.org/abs/2404.15518v3
-    """
+    """Class to perform optimisation using generalised TD methods."""
 
     def __init__(
             self,
