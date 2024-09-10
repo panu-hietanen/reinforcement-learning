@@ -110,6 +110,8 @@ class TD:
 
         return np.sqrt(np.mean(np.power(error, 2)))
 
-        
+    def reset(self) -> None:
+        self.weights = self.bias = None
+
 class TDError(Exception):
     pass
