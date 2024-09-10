@@ -51,6 +51,9 @@ class TD:
     def fit(self, X: np.ndarray, y: np.ndarray) -> None:
         n_samples, n_features = X.shape
 
+        if len(y) != n_samples:
+            raise TDError("Ensure there are the same number of target samples as feature samples.")
+
         X_bias = np.c_[np.ones(n_samples), X]
 
         w = np.zeros(n_features + 1)
