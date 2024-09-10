@@ -27,7 +27,7 @@ class TD:
         self.rng = np.random.default_rng(random_state)
 
         # Ensure P matrix sums to one
-        if not np.allclose(self.P.sum(axis=1), 1):
+        if not np.allclose(P.sum(axis=1), 1):
             raise ValueError("Each row of the transition matrix P must sum to 1.")
         self.P = P
 
