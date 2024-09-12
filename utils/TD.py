@@ -9,6 +9,8 @@ Author: Panu Hietanen
 
 import numpy as np
 from typing import Callable
+import torch
+from torch.optim import Adam
 
 class TD:
     """Class to perform optimisation using generalised TD methods."""
@@ -48,7 +50,7 @@ class TD:
         return int(next)
 
 
-    def fit(self, X: np.ndarray, y: np.ndarray) -> None:
+    def fit_sgd(self, X: np.ndarray, y: np.ndarray) -> None:
         n_samples, n_features = X.shape
 
         if len(y) != n_samples:
@@ -65,7 +67,7 @@ class TD:
         i = 0
         grad = np.ones_like(w) * np.inf
     
-        while i < self.n_iter and np.linalg.norm(self.alpha * grad, 2) > self.epsilon:
+        while i < self.n_iter:
             # Next state samples
             next_index = self.sample_next_state(index=curr_index)
             next_x = X_bias[next_index]
@@ -90,9 +92,70 @@ class TD:
             # Update state and index
             curr_index, curr_x, curr_y = next_index, next_x, next_y
             i += 1
+
+            if np.linalg.norm(self.alpha * grad, 2) < self.epsilon:
+                print(f'Ending optimization early at iteration {i}')
+                break
     
         self.weights = w[1:]
         self.bias = w[0]
+
+
+    def fit_adam(self, X: np.ndarray, y: np.ndarray) -> None:
+        n_samples, n_features = X.shape
+
+        if len(y) != n_samples:
+            raise TDError("Ensure there are the same number of target samples as feature samples.")
+
+        X_bias = np.c_[np.ones(n_samples), X]
+
+        w = torch.zeros(n_features + 1, requires_grad=True)
+
+        # Initialise optimizer
+        optimizer = Adam([w], lr=self.alpha)
+    
+        curr_index = self.rng.integers(low=0, high=n_samples)
+        curr_x = torch.tensor(X_bias[curr_index], dtype=torch.float32)
+        curr_y = torch.tensor(y[curr_index], dtype=torch.float32)
+    
+        i = 0
+    
+        while i < self.n_iter:
+            # Next state samples
+            next_index = self.sample_next_state(index=curr_index)
+            next_x = torch.tensor(X_bias[next_index], dtype=torch.float32)
+            next_y = torch.tensor(y[next_index], dtype=torch.float32)
+
+            optimizer.zero_grad()
+    
+            # Find predictions
+            curr_z = torch.dot(curr_x, w)
+            next_z = torch.dot(next_x, w)
+    
+            # Find rewards
+            r = self.inv_link(curr_y) - self.gamma * self.inv_link(next_y)
+    
+            # TD target
+            z_t = r + self.gamma * next_z
+    
+            # Find loss
+            loss = (self.link(curr_z) - self.link(z_t)) ** 2 / 2
+    
+            # Update weights
+            loss.backward()
+
+            optimizer.step()
+            
+            # Update state and index
+            curr_index, curr_x, curr_y = next_index, next_x, next_y
+            i += 1
+
+            if loss.item() < self.epsilon:
+                print(f'Ending optimization early at iteration {i}')
+                break
+    
+        self.weights = w.detach().numpy()[1:]
+        self.bias = w.detach().numpy()[0]
 
 
     def predict(self, X: np.ndarray) -> np.ndarray:
