@@ -11,8 +11,9 @@ import numpy as np
 from typing import Callable
 import torch
 from torch.optim import Adam
+from abc import ABC, abstractmethod
 
-class TD:
+class BaseTD(ABC):
     """Class to perform optimisation using generalised TD methods."""
 
     def __init__(
@@ -50,7 +51,32 @@ class TD:
         return int(next)
 
 
-    def fit_sgd(self, X: np.ndarray, y: np.ndarray) -> None:
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        if self.weights is None:
+            raise TDError("Please use the fit function first!")
+        return np.dot(X, self.weights) + self.bias
+    
+
+    def rmse(self, X: np.ndarray, y: np.ndarray) -> float:
+        if self.weights is None:
+            raise TDError("Please use the fit function first!")
+        y_hat = self.predict(X)
+
+        error = y_hat - y
+
+        return np.sqrt(np.mean(np.power(error, 2)))
+
+    def reset(self) -> None:
+        self.weights = self.bias = None
+
+    
+    def fit(self, X: np.ndarray, y: np.ndarray) -> None:
+        """Abstract method for fitting the model."""
+        pass
+
+
+class TD_SGD(BaseTD):
+    def fit(self, X: np.ndarray, y: np.ndarray) -> None:
         n_samples, n_features = X.shape
 
         if len(y) != n_samples:
@@ -101,7 +127,8 @@ class TD:
         self.bias = w[0]
 
 
-    def fit_adam(self, X: np.ndarray, y: np.ndarray) -> None:
+class TD_Adam(BaseTD):
+    def fit(self, X: np.ndarray, y: np.ndarray) -> None:
         n_samples, n_features = X.shape
 
         if len(y) != n_samples:
@@ -157,24 +184,6 @@ class TD:
         self.weights = w.detach().numpy()[1:]
         self.bias = w.detach().numpy()[0]
 
-
-    def predict(self, X: np.ndarray) -> np.ndarray:
-        if self.weights is None:
-            raise TDError("Please use the fit function first!")
-        return np.dot(X, self.weights) + self.bias
-    
-
-    def rmse(self, X: np.ndarray, y: np.ndarray) -> float:
-        if self.weights is None:
-            raise TDError("Please use the fit function first!")
-        y_hat = self.predict(X)
-
-        error = y_hat - y
-
-        return np.sqrt(np.mean(np.power(error, 2)))
-
-    def reset(self) -> None:
-        self.weights = self.bias = None
 
 class TDError(Exception):
     pass
