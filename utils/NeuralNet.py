@@ -86,6 +86,15 @@ class BaseTwoLayerFCNN(nn.Module, ABC):
         else:
             print("Weights have not yet been optimized.")
 
+
+    def predict(self, X: torch.Tensor) -> torch.Tensor:
+        self.eval()
+
+        with torch.no_grad():
+            output = self(X)
+
+        return output
+
 class TwoLayerFCNN_Adam(BaseTwoLayerFCNN):
     def fit(self, X: torch.Tensor, y: torch.Tensor) -> None:
         """Fit training data using Adam optimizer."""
