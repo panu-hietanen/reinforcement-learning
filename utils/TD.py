@@ -152,7 +152,7 @@ class TD_Adam(BaseTD):
         w = torch.zeros(n_features + 1, requires_grad=True)
 
         # Initialise optimizer
-        optimizer = Adam([w], lr=self.alph, betas=self.betas)
+        optimizer = Adam([w], lr=self.alpha, betas=self.betas)
 
         curr_index = torch.randint(0, n_samples, (1,), generator=self.rng).item()
         curr_x = X_bias[curr_index]
