@@ -114,14 +114,26 @@ class TwoLayerFCNN_Adam(BaseTwoLayerFCNN):
             print(f'Epoch [{epoch+1}/{self.n_epochs}], Loss: {avg_loss:.4f}')
         self.trained = True
 
-class TwoLayerFCNN_SGD(BaseTwoLayerFCNN):
-    def fit(self, X: torch.Tensor, y: torch.Tensor, momentum: float = 0.0) -> None:
-        """Fit training data using SGD optimizer."""
+class TwoLayerFCNNSGD(BaseTwoLayerFCNN):
+    def __init__(
+            self, 
+            batch_size: int,
+            lr: float,
+            n_epochs: int,
+            input_size: int, 
+            hidden_size: int, 
+            output_size: int = 1,
+            momentum: float = 0.0
+            ):
+        super(TwoLayerFCNNSGD, self).__init__(batch_size, lr, n_epochs, input_size, hidden_size, output_size)
+        self.momentum = momentum
+    
+    def fit(self, X: torch.Tensor, y: torch.Tensor) -> None:
         train_data = TensorDataset(X, y)
         train_loader = DataLoader(train_data, batch_size=self.batch_size, shuffle=True)
 
         criterion = nn.MSELoss()
-        optimizer = optim.SGD(self.parameters(), lr=self.lr, momentum=momentum)
+        optimizer = optim.SGD(self.parameters(), lr=self.lr, momentum=self.momentum)
 
         for epoch in range(self.n_epochs):
             self.train()  # Set the model to training mode
