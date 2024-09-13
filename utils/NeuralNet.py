@@ -96,13 +96,28 @@ class BaseTwoLayerFCNN(nn.Module, ABC):
         return output
 
 class TwoLayerFCNN_Adam(BaseTwoLayerFCNN):
+    def __init__(
+            self, 
+            batch_size: int,
+            lr: float,
+            n_epochs: int,
+            input_size: int, 
+            hidden_size: int, 
+            output_size: int = 1,
+            random_state: int = None,
+            betas: tuple[float, float] = (0.9, 0.999),
+        ) -> None:
+        super(BaseTwoLayerFCNN, self).__init__(batch_size, lr, n_epochs, input_size, hidden_size, output_size, random_state)
+        self.betas = betas
+
+
     def fit(self, X: torch.Tensor, y: torch.Tensor) -> None:
         """Fit training data using Adam optimizer."""
         train_data = TensorDataset(X, y)
         train_loader = DataLoader(train_data, batch_size=self.batch_size, shuffle=True)
 
         criterion = nn.MSELoss()
-        optimizer = optim.Adam(self.parameters(), lr=self.lr)
+        optimizer = optim.Adam(self.parameters(), lr=self.lr, betas=self.betas)
 
         for epoch in range(self.n_epochs):
             self.train()  # Set the model to training mode

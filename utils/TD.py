@@ -126,6 +126,22 @@ class TD_SGD(BaseTD):
 
 
 class TD_Adam(BaseTD):
+    def __init__(
+                self,
+                n_iter: int,
+                P: torch.Tensor,
+                link: Callable[[torch.Tensor], torch.Tensor],
+                inv_link: Callable[[torch.Tensor], torch.Tensor],
+                gamma: float,
+                alpha: float,
+                epsilon: float,
+                betas: tuple[float, float] = (0.9, 0.999),
+                random_state: int = None,
+        ) -> None:
+        super(TD_Adam, self).__init__(n_iter, P, link, inv_link, gamma, alpha, epsilon, random_state)
+        self.betas = betas
+
+
     def fit(self, X: torch.Tensor, y: torch.Tensor) -> None:
         n_samples, n_features = X.shape
 
@@ -136,7 +152,7 @@ class TD_Adam(BaseTD):
         w = torch.zeros(n_features + 1, requires_grad=True)
 
         # Initialise optimizer
-        optimizer = Adam([w], lr=self.alpha)
+        optimizer = Adam([w], lr=self.alph, betas=self.betas)
 
         curr_index = torch.randint(0, n_samples, (1,), generator=self.rng).item()
         curr_x = X_bias[curr_index]
