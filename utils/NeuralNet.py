@@ -120,7 +120,7 @@ class TwoLayerFCNN_Adam(BaseTwoLayerFCNN):
             print(f'Epoch [{epoch+1}/{self.n_epochs}], Loss: {avg_loss:.4f}')
         self.trained = True
 
-class TwoLayerFCNNSGD(BaseTwoLayerFCNN):
+class TwoLayerFCNN_SGD(BaseTwoLayerFCNN):
     def __init__(
             self, 
             batch_size: int,
@@ -131,7 +131,7 @@ class TwoLayerFCNNSGD(BaseTwoLayerFCNN):
             output_size: int = 1,
             momentum: float = 0.0
             ):
-        super(TwoLayerFCNNSGD, self).__init__(batch_size, lr, n_epochs, input_size, hidden_size, output_size)
+        super(TwoLayerFCNN_SGD, self).__init__(batch_size, lr, n_epochs, input_size, hidden_size, output_size)
         self.momentum = momentum
     
     def fit(self, X: torch.Tensor, y: torch.Tensor) -> None:
