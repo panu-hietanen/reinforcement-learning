@@ -7,20 +7,20 @@ from utils.TD import BaseTD, TD_Adam, TD_SGD
 
 # Assuming NN_SGD or NN_Adam are your neural network classes
 # Define a function to create the model
-def create_model_nn(optimizer_type: str, input_size: int, hidden_size: int, lr: float, batch_size: int, n_epochs: int) -> BaseTwoLayerFCNN:
+def create_model_nn(optimizer_type: str, input_size: int, hidden_size: int, lr: float, batch_size: int, n_epochs: int, betas: tuple[float, float] = (0.9, 0.999)) -> BaseTwoLayerFCNN:
     if optimizer_type == 'sgd':
         return TwoLayerFCNN_SGD(batch_size=batch_size, lr=lr, n_epochs=n_epochs, input_size=input_size, hidden_size=hidden_size)
     elif optimizer_type == 'adam':
-        return TwoLayerFCNN_Adam(batch_size=batch_size, lr=lr, n_epochs=n_epochs, input_size=input_size, hidden_size=hidden_size)
+        return TwoLayerFCNN_Adam(batch_size=batch_size, lr=lr, n_epochs=n_epochs, input_size=input_size, hidden_size=hidden_size, betas=betas)
     else:
         raise ValueError("Invalid optimizer type")
     
 # Function to create TD model
-def create_model_td(optimizer_type: str, n_iter: int, gamma: float, alpha: float, epsilon: float, P: torch.Tensor) -> BaseTD:
+def create_model_td(optimizer_type: str, n_iter: int, gamma: float, alpha: float, epsilon: float, P: torch.Tensor, betas: tuple[float, float] = (0.9, 0.999)) -> BaseTD:
     if optimizer_type == 'sgd':
         return TD_SGD(n_iter=n_iter, P=P, link=lambda x: x, inv_link=lambda x: x, gamma=gamma, alpha=alpha, epsilon=epsilon)
     elif optimizer_type == 'adam':
-        return TD_Adam(n_iter=n_iter, P=P, link=lambda x: x, inv_link=lambda x: x, gamma=gamma, alpha=alpha, epsilon=epsilon)
+        return TD_Adam(n_iter=n_iter, P=P, link=lambda x: x, inv_link=lambda x: x, gamma=gamma, alpha=alpha, epsilon=epsilon, betas=betas)
     else:
         raise ValueError(f"Invalid optimizer type: {optimizer_type}")
 
@@ -51,12 +51,21 @@ def random_search(
             except:
                 print('Please enter the correctly formatted dictionary.')
                 return None
-
-            print(f"Iteration {i+1}: Training with optimizer={optimizer_type}, hidden_size={hidden_size}, "
-                  f"lr={lr}, batch_size={batch_size}, n_epochs={n_epochs}")
+            
+            if 'betas' in param_grid:
+                betas = random.choice(param_grid['betas'])
+            else:
+                betas = (0.9, 0.999)
+            
+            if optimizer_type == 'adam':
+                print(f"Iteration {i+1}: Training NN with optimizer={optimizer_type}, hidden_size={hidden_size}, "
+                      f"lr={lr}, batch_size={batch_size}, n_epochs={n_epochs}, betas={betas}")
+            else:
+                print(f"Iteration {i+1}: Training NN with optimizer={optimizer_type}, hidden_size={hidden_size}, "
+                      f"lr={lr}, batch_size={batch_size}, n_epochs={n_epochs}")
 
             # Create and evaluate the model with the sampled hyperparameters
-            model = create_model_nn(optimizer_type, X_train.shape[1], hidden_size, lr, batch_size, n_epochs)
+            model = create_model_nn(optimizer_type, X_train.shape[1], hidden_size, lr, batch_size, n_epochs, betas=betas)
             model.fit(X_train, y_train)
             loss = model.evaluate(X_val, y_val)
 
@@ -70,7 +79,8 @@ def random_search(
                     'hidden_size': hidden_size,
                     'lr': lr,
                     'batch_size': batch_size,
-                    'n_epochs': n_epochs
+                    'n_epochs': n_epochs,
+                    'betas': betas
                 }
 
         print(f"Best hyperparameters: {best_params}, Best RMSE: {best_loss}")
@@ -87,16 +97,25 @@ def random_search(
             except KeyError as e:
                 print('Please enter the correctly formatted dictionary.')
                 return None
+            
+            if 'betas' in param_grid:
+                betas = random.choice(param_grid['betas'])
+            else:
+                betas = (0.9, 0.999)
 
-            print(f"Iteration {i+1}: Training TD with optimizer={optimizer_type}, n_iter={n_iter_td}, "
-                  f"gamma={gamma}, alpha={alpha}, epsilon={epsilon}")
+            if optimizer_type == 'adam':
+                print(f"Iteration {i+1}: Training TD with optimizer={optimizer_type}, n_iter={n_iter_td}, "
+                      f"gamma={gamma}, alpha={alpha}, epsilon={epsilon}, betas={betas}")
+            else:
+                print(f"Iteration {i+1}: Training TD with optimizer={optimizer_type}, n_iter={n_iter_td}, "
+                      f"gamma={gamma}, alpha={alpha}, epsilon={epsilon}")
 
             # Create the transition matrix P (example with uniform probability)
             num_samples = X_train.shape[0]
             P = torch.ones((num_samples, num_samples)) / num_samples  # Equal probability for each state
 
             # Create and evaluate the TD model
-            model = create_model_td(optimizer_type, n_iter_td, gamma, alpha, epsilon, P)
+            model = create_model_td(optimizer_type, n_iter_td, gamma, alpha, epsilon, P, betas=betas)
             model.fit(X_train, y_train)
             loss = model.rmse(X_val, y_val)
 
@@ -110,7 +129,8 @@ def random_search(
                     'n_iter': n_iter_td,
                     'gamma': gamma,
                     'alpha': alpha,
-                    'epsilon': epsilon
+                    'epsilon': epsilon,
+                    'betas': betas
                 }
 
         print(f"Best hyperparameters for TD: {best_params}, Best RMSE: {best_loss}")
