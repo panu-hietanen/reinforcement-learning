@@ -1,3 +1,9 @@
+"""
+Code containing a class for training a Neural Network for regression.
+
+Date: 10/9/24
+Author: Panu Hietanen
+"""
 import torch
 from torch import optim, nn
 from torch.utils.data import DataLoader, TensorDataset
