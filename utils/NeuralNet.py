@@ -37,6 +37,8 @@ class TwoLayerFCNN(nn.Module):
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.output_size = output_size
+
+        self.trained = False
     
     def forward(self, x):
         out = self.fc1(x)
@@ -75,6 +77,41 @@ class TwoLayerFCNN(nn.Module):
             # Average loss for the epoch
             avg_loss = epoch_loss / len(train_loader)
             print(f'Epoch [{epoch+1}/{self.n_epochs}], Loss: {avg_loss:.4f}')
+        self.trained = True
+
+
+    def fit_sgd(self, X: torch.Tensor, y: torch.Tensor, momentum: float = 0.0) -> None:
+        train_data = TensorDataset(X, y)
+        train_loader = DataLoader(train_data, batch_size=self.batch_size, shuffle=True)
+
+        criterion = nn.MSELoss()
+        optimizer = optim.SGD(self.parameters(), lr=self.lr, momentum=momentum)
+
+        for epoch in range(self.n_epochs):
+            self.train()  # Set the model to training mode
+            epoch_loss = 0.0  # Variable to accumulate the epoch's loss
+
+            for batch_idx, (data, target) in enumerate(train_loader):
+                optimizer.zero_grad()  # Zero the gradients
+
+                # Forward pass
+                output = self(data)
+
+                # Calculate the loss
+                loss = criterion(output, target.unsqueeze(1))  # Match dimensions of output and target
+
+                # Backward pass and optimization
+                loss.backward()
+                optimizer.step()
+
+                # Accumulate loss for this epoch
+                epoch_loss += loss.item()
+
+            # Average loss for the epoch
+            avg_loss = epoch_loss / len(train_loader)
+            print(f'Epoch [{epoch+1}/{self.n_epochs}], Loss: {avg_loss:.4f}')
+        self.trained = True
+        
 
     
     def evaluate(self, X: torch.Tensor, y: torch.Tensor) -> float:
@@ -96,6 +133,9 @@ class TwoLayerFCNN(nn.Module):
     
 
     def reset(self) -> None:
-        for layer in self.children():
-            if hasattr(layer, 'reset_parameters'):
-                layer.reset_parameters()
+        if self.trained:
+            for layer in self.children():
+                if hasattr(layer, 'reset_parameters'):
+                    layer.reset_parameters()
+        else:
+            print("Weights have not yet been optimised.")
