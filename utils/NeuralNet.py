@@ -104,10 +104,9 @@ class TwoLayerFCNN_Adam(BaseTwoLayerFCNN):
             input_size: int, 
             hidden_size: int, 
             output_size: int = 1,
-            random_state: int = None,
             betas: tuple[float, float] = (0.9, 0.999),
         ) -> None:
-        super(BaseTwoLayerFCNN, self).__init__(batch_size, lr, n_epochs, input_size, hidden_size, output_size, random_state)
+        super(TwoLayerFCNN_Adam, self).__init__(batch_size, lr, n_epochs, input_size, hidden_size, output_size)
         self.betas = betas
 
 
