@@ -1,9 +1,3 @@
-"""
-Code containing a class for training a Neural Network for regression with two fully connected hidden layers.
-
-Date: 10/9/24
-Author: Panu Hietanen
-"""
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -60,6 +54,7 @@ class TwoHiddenLayerNN:
         # Ensure input is a tensor
         if not isinstance(X, torch.Tensor):
             X = torch.tensor(X, dtype=torch.float32)
+        self.model.eval()
         with torch.no_grad():
             outputs = self.model(X)
         return outputs
