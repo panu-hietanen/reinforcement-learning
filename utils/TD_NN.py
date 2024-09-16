@@ -152,13 +152,12 @@ class TD_NN_Adam(BaseTD_NN):
             alpha: float,
             epsilon: float,
             input_size: int,
-            hidden_size1: int,
-            hidden_size2: int,
+            hidden_size: int,
             output_size: int = 1,
             betas: tuple = (0.9, 0.999),
             random_state: int = None,
     ) -> None:
-        super(TD_NN_Adam, self).__init__(n_iter, P, link, inv_link, gamma, alpha, epsilon, input_size, hidden_size1, hidden_size2, output_size, random_state)
+        super(TD_NN_Adam, self).__init__(n_iter, P, link, inv_link, gamma, alpha, epsilon, input_size, hidden_size, output_size, random_state)
         self.betas = betas
 
     def fit(self, X: torch.Tensor, y: torch.Tensor) -> None:
