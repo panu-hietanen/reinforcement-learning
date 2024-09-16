@@ -1,5 +1,5 @@
 """
-Code containing a class for training a Neural Network for regression.
+Code containing a class for training a Neural Network for regression with two fully connected hidden layers.
 
 Date: 10/9/24
 Author: Panu Hietanen
@@ -9,17 +9,17 @@ from torch import optim, nn
 from torch.utils.data import DataLoader, TensorDataset
 from abc import ABC, abstractmethod
 
-class BaseTwoLayerFCNN(nn.Module, ABC):
+class BaseThreeLayerFCNN(nn.Module, ABC):
     def __init__(
             self, 
             batch_size: int,
             lr: float,
             n_epochs: int,
             input_size: int, 
-            hidden_size: int, 
+            hidden_size: int = 64, 
             output_size: int = 1
             ):
-        super(BaseTwoLayerFCNN, self).__init__()
+        super(BaseThreeLayerFCNN, self).__init__()
 
         self.device = (
             "cuda"
@@ -34,13 +34,16 @@ class BaseTwoLayerFCNN(nn.Module, ABC):
         # Activation function (ReLU)
         self.relu = nn.ReLU()
         # Second fully connected layer
-        self.fc2 = nn.Linear(hidden_size, output_size)
+        self.fc2 = nn.Linear(hidden_size, hidden_size)
+        # Third fully connected layer (output layer)
+        self.fc3 = nn.Linear(hidden_size, output_size)
 
         self.batch_size = batch_size
         self.lr = lr
         self.n_epochs = n_epochs
         self.input_size = input_size
-        self.hidden_size = hidden_size
+        self.hidden_size1 = hidden_size
+        self.hidden_size2 = hidden_size
         self.output_size = output_size
 
         self.trained = False
@@ -50,6 +53,8 @@ class BaseTwoLayerFCNN(nn.Module, ABC):
         out = self.fc1(x)
         out = self.relu(out)
         out = self.fc2(out)
+        out = self.relu(out)
+        out = self.fc3(out)
         return out
 
     @abstractmethod
@@ -77,6 +82,13 @@ class BaseTwoLayerFCNN(nn.Module, ABC):
 
         avg_test_loss = total_loss / len(test_loader)
         return avg_test_loss
+    
+    def rmse(self, X: torch.Tensor, y: torch.Tensor) -> float:
+        if not self.trained:
+            raise NNError("Please use the fit function first!")
+        y_hat = self.predict(X)
+        error = y_hat - y
+        return torch.sqrt(torch.mean(torch.pow(error, 2)))
 
     def reset(self) -> None:
         if self.trained:
@@ -86,7 +98,6 @@ class BaseTwoLayerFCNN(nn.Module, ABC):
         else:
             print("Weights have not yet been optimized.")
 
-
     def predict(self, X: torch.Tensor) -> torch.Tensor:
         self.eval()
 
@@ -95,20 +106,19 @@ class BaseTwoLayerFCNN(nn.Module, ABC):
 
         return output
 
-class TwoLayerFCNN_Adam(BaseTwoLayerFCNN):
+class ThreeLayerFCNN_Adam(BaseThreeLayerFCNN):
     def __init__(
             self, 
             batch_size: int,
             lr: float,
             n_epochs: int,
             input_size: int, 
-            hidden_size: int, 
+            hidden_size: int = 64, 
             output_size: int = 1,
-            betas: tuple[float, float] = (0.9, 0.999),
+            betas: tuple = (0.9, 0.999),
         ) -> None:
-        super(TwoLayerFCNN_Adam, self).__init__(batch_size, lr, n_epochs, input_size, hidden_size, output_size)
+        super(ThreeLayerFCNN_Adam, self).__init__(batch_size, lr, n_epochs, input_size, hidden_size, output_size)
         self.betas = betas
-
 
     def fit(self, X: torch.Tensor, y: torch.Tensor) -> None:
         """Fit training data using Adam optimizer."""
@@ -143,26 +153,13 @@ class TwoLayerFCNN_Adam(BaseTwoLayerFCNN):
             print(f'Epoch [{epoch+1}/{self.n_epochs}], Loss: {avg_loss:.4f}')
         self.trained = True
 
-class TwoLayerFCNN_SGD(BaseTwoLayerFCNN):
-    def __init__(
-            self, 
-            batch_size: int,
-            lr: float,
-            n_epochs: int,
-            input_size: int, 
-            hidden_size: int, 
-            output_size: int = 1,
-            momentum: float = 0.0
-            ):
-        super(TwoLayerFCNN_SGD, self).__init__(batch_size, lr, n_epochs, input_size, hidden_size, output_size)
-        self.momentum = momentum
-    
+class ThreeLayerFCNN_SGD(BaseThreeLayerFCNN):
     def fit(self, X: torch.Tensor, y: torch.Tensor) -> None:
         train_data = TensorDataset(X, y)
         train_loader = DataLoader(train_data, batch_size=self.batch_size, shuffle=True)
 
         criterion = nn.MSELoss()
-        optimizer = optim.SGD(self.parameters(), lr=self.lr, momentum=self.momentum)
+        optimizer = optim.SGD(self.parameters(), lr=self.lr)
 
         for epoch in range(self.n_epochs):
             self.train()  # Set the model to training mode
@@ -188,3 +185,7 @@ class TwoLayerFCNN_SGD(BaseTwoLayerFCNN):
             avg_loss = epoch_loss / len(train_loader)
             print(f'Epoch [{epoch+1}/{self.n_epochs}], Loss: {avg_loss:.4f}')
         self.trained = True
+
+
+class NNError(Exception):
+    pass
