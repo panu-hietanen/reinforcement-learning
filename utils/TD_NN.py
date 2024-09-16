@@ -152,7 +152,7 @@ class TD_NN_Adam(BaseTD_NN):
             alpha: float,
             epsilon: float,
             input_size: int,
-            hidden_size: int,
+            hidden_size: int = 64,
             output_size: int = 1,
             betas: tuple = (0.9, 0.999),
             random_state: int = None,
