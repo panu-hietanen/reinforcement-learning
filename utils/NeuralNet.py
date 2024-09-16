@@ -9,7 +9,7 @@ from torch import optim, nn
 from torch.utils.data import DataLoader, TensorDataset
 from abc import ABC, abstractmethod
 
-class BaseThreeLayerFCNN(nn.Module, ABC):
+class BaseThreeLayerFCNN(nn.Module):
     def __init__(
             self, 
             batch_size: int,
@@ -56,11 +56,6 @@ class BaseThreeLayerFCNN(nn.Module, ABC):
         out = self.relu(out)
         out = self.fc3(out)
         return out
-
-    @abstractmethod
-    def fit(self, X: torch.Tensor, y: torch.Tensor):
-        """Abstract method for fitting the model."""
-        pass
 
     def evaluate(self, X: torch.Tensor, y: torch.Tensor) -> float:
         """Evaluate the performance of the trained neural net."""
