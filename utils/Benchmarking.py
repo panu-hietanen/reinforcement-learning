@@ -9,7 +9,7 @@ def mean_absolute_diff(y_pred: torch.Tensor, y_pred_noisy: torch.Tensor) -> floa
 
 def plot_noise_diff(td_sgd: float, td_adam: float, nn_sgd: float, nn_adam: float) -> None:
     """Plot a bar chart of mean absolute difference."""
-    methods = ['TD-SGD', 'TD-Adam', 'NN-SGD', 'NN-Adam']
+    methods = ['TD-SGD', 'TD-Adam', 'L2-SGD', 'L2-Adam']
     changes = [td_sgd, td_adam, nn_sgd, nn_adam]
 
     plt.bar(methods, changes, color=['blue', 'green', 'red', 'orange'])
