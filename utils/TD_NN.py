@@ -16,7 +16,7 @@ class TemporalDifferenceNN:
             input_size: int,
             output_size: int = 1,
             learning_rate: float = 0.01,
-            gamma: float = 0.9,
+            gamma: float = 0,
             epsilon: float = 1e-6,
             n_iter: int = 1000,
             P: torch.Tensor = None,
