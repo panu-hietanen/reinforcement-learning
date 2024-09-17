@@ -42,7 +42,6 @@ class TemporalDifferenceNN:
             learning_rate: float = 0.01,
             gamma: float = 0,
             epsilon: float = 1e-6,
-            n_iter: int = 1000,
             P: torch.Tensor = None,
             link: Callable[[torch.Tensor], torch.Tensor] = None,
             inv_link: Callable[[torch.Tensor], torch.Tensor] = None,
@@ -67,7 +66,6 @@ class TemporalDifferenceNN:
         # TD Learning parameters
         self.gamma = gamma
         self.epsilon = epsilon
-        self.n_iter = int(n_iter)
         self.P = P
         self.link = link if link else lambda x: x  # Identity function if None
         self.inv_link = inv_link if inv_link else lambda x: x  # Identity function if None
@@ -79,7 +77,7 @@ class TemporalDifferenceNN:
         if not torch.allclose(self.P.sum(dim=1), torch.ones(self.P.size(0))):
             raise ValueError("Each row of the transition matrix P must sum to 1.")
         
-    def fit(self, X: torch.Tensor, y: torch.Tensor, epochs: int = 1) -> None:
+    def fit(self, X: torch.Tensor, y: torch.Tensor, epochs: int = 100) -> None:
         n_samples = X.size(0)
 
         if y.size(0) != n_samples:
@@ -97,7 +95,7 @@ class TemporalDifferenceNN:
 
         self.nn.model.train()
 
-        for epoch in range(self.n_iter):
+        for epoch in range(epochs):
             epoch_loss = 0.0
             for batch in dataloader:
                 curr_x, curr_y, next_x, next_y = batch
