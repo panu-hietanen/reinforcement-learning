@@ -45,10 +45,10 @@ def plot_noise_diff(td_sgd: torch.Tensor, td_adam: torch.Tensor, nn_sgd: torch.T
     methods = ['TD-SGD', 'TD-Adam', 'L2-SGD', 'L2-Adam']
     changes = [torch.mean(td_sgd), torch.mean(td_adam), torch.mean(nn_sgd), torch.mean(nn_adam)]
     stes = [
-        torch.std(td_sgd) / len(td_sgd), 
-        torch.std(td_adam) / len(td_adam), 
-        torch.std(nn_sgd) / len(nn_sgd), 
-        torch.std(nn_adam) / len(nn_adam)
+        torch.std(td_sgd) /  np.sqrt(len(td_sgd)), 
+        torch.std(td_adam) / np.sqrt(len(td_adam)), 
+        torch.std(nn_sgd) /  np.sqrt(len(nn_sgd)), 
+        torch.std(nn_adam) / np.sqrt(len(nn_adam))
     ]
 
     # Plot the bar chart with error bars (std deviation)
@@ -63,10 +63,15 @@ def plot_rmse_diff(td_sgd: torch.Tensor, td_adam: torch.Tensor, nn_sgd: torch.Te
     """Plot a bar chart of mean rmse change."""
     methods = ['TD-SGD', 'TD-Adam', 'L2-SGD', 'L2-Adam']
     changes = [torch.mean(td_sgd), torch.mean(td_adam), torch.mean(nn_sgd), torch.mean(nn_adam)]
-    stds = [torch.std(td_sgd), torch.std(td_adam), torch.std(nn_sgd), torch.std(nn_adam)]
+    stes = [
+        torch.std(td_sgd) /  np.sqrt(len(td_sgd)), 
+        torch.std(td_adam) / np.sqrt(len(td_adam)), 
+        torch.std(nn_sgd) /  np.sqrt(len(nn_sgd)), 
+        torch.std(nn_adam) / np.sqrt(len(nn_adam))
+    ]
 
     # Plot the bar chart with error bars (std deviation)
-    plt.bar(methods, changes, yerr=stds, color=['blue', 'green', 'red', 'orange'], capsize=5)
+    plt.bar(methods, changes, yerr=stes, color=['blue', 'green', 'red', 'orange'], capsize=5)
     plt.ylabel('Average Change in rmse/%')
     plt.title('Comparison of Sensitivity of Regression Methods (rmse change)')
 
