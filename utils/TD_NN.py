@@ -113,6 +113,8 @@ class TemporalDifferenceNN:
             curr_x = next_x
             curr_y = next_y
 
+        self.nn.trained = True
+
     def predict(self, X: torch.Tensor) -> torch.Tensor:
         """Predict outputs for the given input X."""
         return self.nn.predict(X)
