@@ -2,7 +2,7 @@
 TD Learning with a Two-Hidden-Layer Neural Network (Mini-Batch Training)
 
 Date: 10/9/24
-Author: Your Name
+Author: Panu Hietanen
 """
 
 import torch
@@ -67,8 +67,8 @@ class TemporalDifferenceNN:
         self.gamma = gamma
         self.epsilon = epsilon
         self.P = P
-        self.link = link if link else lambda x: x  # Identity function if None
-        self.inv_link = inv_link if inv_link else lambda x: x  # Identity function if None
+        self.link = link if link else lambda x: x 
+        self.inv_link = inv_link if inv_link else lambda x: x
         self.batch_size = batch_size
 
         # Validate the transition matrix P
