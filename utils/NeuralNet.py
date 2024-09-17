@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.utils.data import DataLoader, TensorDataset
 
 class TwoHiddenLayerNN:
     def __init__(
@@ -10,6 +11,7 @@ class TwoHiddenLayerNN:
             optimizer: str = 'sgd', 
             learning_rate: float = 0.01,
             betas: tuple[float, float] = (0.9, 0.999),
+            batch_size: int = 32,
         ) -> None:
         # Define the neural network architecture
         self.model = nn.Sequential(
@@ -31,6 +33,7 @@ class TwoHiddenLayerNN:
         else:
             raise ValueError("Optimizer must be 'sgd' or 'adam'")
         
+        self.batch_size = batch_size
         self.trained = False
 
     def fit(self, X: torch.Tensor, y: torch.Tensor, epochs: int = 100) -> None:
@@ -40,17 +43,23 @@ class TwoHiddenLayerNN:
         if not isinstance(y, torch.Tensor):
             y = torch.tensor(y, dtype=torch.float32)
 
+        # Create DataLoader for mini-batch training
+        dataset = TensorDataset(X, y)
+        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
+
         for epoch in range(epochs):
-            # Zero the gradients
-            self.optimizer.zero_grad()
+            self.model.train()
+            for batch_X, batch_y in dataloader:
+                # Zero the gradients
+                self.optimizer.zero_grad()
 
-            # Forward pass
-            outputs = self.model(X)
-            loss = self.criterion(outputs, y.unsqueeze(1))
+                # Forward pass
+                outputs = self.model(batch_X)
+                loss = self.criterion(outputs, batch_y.unsqueeze(1))
 
-            # Backward pass and optimization
-            loss.backward()
-            self.optimizer.step()
+                # Backward pass and optimization
+                loss.backward()
+                self.optimizer.step()
         
         self.trained = True
 

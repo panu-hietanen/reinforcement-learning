@@ -1,13 +1,37 @@
 """
-TD Learning with a Two-Hidden-Layer Neural Network
+TD Learning with a Two-Hidden-Layer Neural Network (Mini-Batch Training)
 
 Date: 10/9/24
 Author: Your Name
 """
 
 import torch
+from torch.utils.data import DataLoader, Dataset
 from typing import Callable
 from utils.NeuralNet import TwoHiddenLayerNN
+
+class TransitionDataset(Dataset):
+    """Custom Dataset for storing transitions."""
+    def __init__(self, X: torch.Tensor, y: torch.Tensor, P: torch.Tensor):
+        self.X = X
+        self.y = y
+        self.P = P
+        self.n_samples = X.size(0)
+
+    def __len__(self):
+        return self.n_samples
+
+    def __getitem__(self, idx):
+        curr_x = self.X[idx]
+        curr_y = self.y[idx]
+
+        # Sample next state based on transition matrix P
+        probs = self.P[idx]
+        next_idx = torch.multinomial(probs, 1).item()
+        next_x = self.X[next_idx]
+        next_y = self.y[next_idx]
+
+        return curr_x, curr_y, next_x, next_y
 
 class TemporalDifferenceNN:
     def __init__(
@@ -23,6 +47,7 @@ class TemporalDifferenceNN:
             link: Callable[[torch.Tensor], torch.Tensor] = None,
             inv_link: Callable[[torch.Tensor], torch.Tensor] = None,
             betas: tuple[float, float] = (0.9, 0.999),
+            batch_size: int = 32,
             random_state: int = None,
         ) -> None:
         # Set seed for reproducibility
@@ -36,6 +61,7 @@ class TemporalDifferenceNN:
             optimizer=optimizer,
             learning_rate=learning_rate,
             betas=betas,
+            batch_size=batch_size,
         )
 
         # TD Learning parameters
@@ -45,6 +71,7 @@ class TemporalDifferenceNN:
         self.P = P
         self.link = link if link else lambda x: x  # Identity function if None
         self.inv_link = inv_link if inv_link else lambda x: x  # Identity function if None
+        self.batch_size = batch_size
 
         # Validate the transition matrix P
         if self.P is None:
@@ -52,13 +79,7 @@ class TemporalDifferenceNN:
         if not torch.allclose(self.P.sum(dim=1), torch.ones(self.P.size(0))):
             raise ValueError("Each row of the transition matrix P must sum to 1.")
         
-    def sample_next_state(self, index: int) -> int:
-        """Sample the next state based on the transition matrix P."""
-        probs = self.P[index]
-        next_state = torch.multinomial(probs, 1).item()
-        return next_state
-
-    def fit(self, X: torch.Tensor, y: torch.Tensor) -> None:
+    def fit(self, X: torch.Tensor, y: torch.Tensor, epochs: int = 1) -> None:
         n_samples = X.size(0)
 
         if y.size(0) != n_samples:
@@ -70,48 +91,44 @@ class TemporalDifferenceNN:
         if not isinstance(y, torch.Tensor):
             y = torch.tensor(y, dtype=torch.float32)
 
-        # Set the model to training mode
+        # Create TransitionDataset and DataLoader for mini-batch training
+        dataset = TransitionDataset(X, y, self.P)
+        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
+
         self.nn.model.train()
 
-        curr_index = torch.randint(0, n_samples, (1,)).item()
-        curr_x = X[curr_index].unsqueeze(0)  # Add batch dimension
-        curr_y = y[curr_index]
+        for epoch in range(self.n_iter):
+            epoch_loss = 0.0
+            for batch in dataloader:
+                curr_x, curr_y, next_x, next_y = batch
 
-        for i in range(self.n_iter):
-            # Next state samples
-            next_index = self.sample_next_state(curr_index)
-            next_x = X[next_index].unsqueeze(0)  # Add batch dimension
-            next_y = y[next_index]
+                # Zero the gradients
+                self.nn.optimizer.zero_grad()
 
-            # Zero the gradients
-            self.nn.optimizer.zero_grad()
+                # Forward pass for current and next states
+                curr_z = self.nn.model(curr_x)
+                with torch.no_grad():
+                    next_z = self.nn.model(next_x)
 
-            # Forward pass for current and next states
-            curr_z = self.nn.model(curr_x)
-            next_z = self.nn.model(next_x).detach() 
+                # Compute reward
+                r = self.inv_link(curr_y) - self.gamma * self.inv_link(next_y)
 
-            # Compute reward
-            r = self.inv_link(curr_y) - self.gamma * self.inv_link(next_y)
+                # TD target
+                z_t = r.unsqueeze(1) + self.gamma * next_z
 
-            # TD target
-            z_t = r + self.gamma * next_z
+                # Compute loss
+                loss = self.nn.criterion(self.link(curr_z), self.link(z_t))
 
-            # Compute loss
-            loss = self.nn.criterion(self.link(curr_z), self.link(z_t))
+                # Backward pass and optimization
+                loss.backward()
+                self.nn.optimizer.step()
 
-            # Backward pass and optimization
-            loss.backward()
-            self.nn.optimizer.step()
+                epoch_loss += loss.item() * curr_x.size(0)
 
             # Early stopping based on loss
-            if loss.item() < self.epsilon:
-                print(f'Ending optimization early at iteration {i+1}')
+            if epoch_loss < self.epsilon:
+                print(f'Ending optimization early at epoch {epoch+1}')
                 break
-
-            # Update current state
-            curr_index = next_index
-            curr_x = next_x
-            curr_y = next_y
 
         self.nn.trained = True
 
