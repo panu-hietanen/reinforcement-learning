@@ -30,6 +30,8 @@ class TwoHiddenLayerNN:
             self.optimizer = optim.Adam(self.model.parameters(), lr=learning_rate, betas=betas)
         else:
             raise ValueError("Optimizer must be 'sgd' or 'adam'")
+        
+        self.trained = False
 
     def fit(self, X: torch.Tensor, y: torch.Tensor, epochs: int = 100) -> None:
         # Ensure inputs are tensors
@@ -49,11 +51,15 @@ class TwoHiddenLayerNN:
             # Backward pass and optimization
             loss.backward()
             self.optimizer.step()
+        
+        self.trained = True
 
     def predict(self, X: torch.Tensor) -> torch.Tensor:
         # Ensure input is a tensor
         if not isinstance(X, torch.Tensor):
             X = torch.tensor(X, dtype=torch.float32)
+        if not self.trained:
+            raise NNError('Model has not been trained.')
         self.model.eval()
         with torch.no_grad():
             outputs = self.model(X)
@@ -65,8 +71,20 @@ class TwoHiddenLayerNN:
             X = torch.tensor(X, dtype=torch.float32)
         if not isinstance(y, torch.Tensor):
             y = torch.tensor(y, dtype=torch.float32)
+        if not self.trained:
+            raise NNError('Model has not been trained.')
         with torch.no_grad():
             outputs = self.predict(X)
             mse_loss = self.criterion(outputs, y.unsqueeze(1))
             rmse = torch.sqrt(mse_loss)
         return rmse.item()
+    
+    def reset(self) -> None:
+        if not self.trained:
+            raise NNError('Model has not been trained.')
+        for layer in self.model.children():
+            if hasattr(layer, 'reset_parameters'):
+                layer.reset_parameters()
+
+class NNError(Exception):
+    pass
