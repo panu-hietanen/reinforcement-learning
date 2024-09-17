@@ -12,6 +12,7 @@ class TwoHiddenLayerNN:
             learning_rate: float = 0.01,
             betas: tuple[float, float] = (0.9, 0.999),
             batch_size: int = 32,
+            epsilon: float = 0,
         ) -> None:
         # Define the neural network architecture
         self.model = nn.Sequential(
@@ -34,6 +35,7 @@ class TwoHiddenLayerNN:
             raise ValueError("Optimizer must be 'sgd' or 'adam'")
         
         self.batch_size = batch_size
+        self.epsilon = epsilon
         self.trained = False
 
     def fit(self, X: torch.Tensor, y: torch.Tensor, epochs: int = 100) -> None:
@@ -49,6 +51,7 @@ class TwoHiddenLayerNN:
 
         for epoch in range(epochs):
             self.model.train()
+            epoch_loss = 0.0
             for batch_X, batch_y in dataloader:
                 # Zero the gradients
                 self.optimizer.zero_grad()
@@ -60,8 +63,16 @@ class TwoHiddenLayerNN:
                 # Backward pass and optimization
                 loss.backward()
                 self.optimizer.step()
+
+                epoch_loss += loss.item() * batch_X.size(0)
+            
+            av_epoch_loss = epoch_loss / len(dataloader)
+            if av_epoch_loss < self.epsilon:
+                print(f'Ending optimization early at epoch {epoch+1} with loss {av_epoch_loss}')
+                break
         
         self.trained = True
+        print(f"Training finished. Final epoch loss: {av_epoch_loss}")
 
     def predict(self, X: torch.Tensor) -> torch.Tensor:
         # Ensure input is a tensor
