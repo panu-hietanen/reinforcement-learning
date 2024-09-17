@@ -21,29 +21,23 @@ def mean_absolute_diff(y_pred: torch.Tensor, y_pred_noisy: torch.Tensor) -> torc
 
 
 def mean_rmse_change(y_true: torch.Tensor, y_pred: torch.Tensor, y_pred_noisy: torch.Tensor) -> torch.Tensor:
-    """Calculate the mean change in RMSE between original predictions and noisy predictions."""
-    if y_true.shape[0] != y_pred.shape[0]:
-        raise ValueError('Prediction vector has incompatible size.')
-    elif y_true.shape[0] != y_pred_noisy.shape[0]:
-        raise ValueError('Noisy prediction vector has incompatible size.')
+    """Calculate the percentage change in RMSE between original and noisy predictions."""
     
+    # Ensure y_true is a column vector for broadcasting
     if y_true.dim() == 1:
-        y_pred = y_pred.unsqueeze(1)
-    if y_pred.dim() == 1:
-        y_pred = y_pred.unsqueeze(1)
+        y_true = y_true.unsqueeze(1)
     
-    iters = y_pred_noisy.shape[1]
-
-    rmse_original = torch.sqrt(torch.mean((y_pred - y_true) ** 2))
-    rmse_change = torch.zeros(iters)
-
-    for i in range(iters):
-        rmse_noisy = torch.sqrt(torch.mean((y_pred_noisy[:,i] - y_true) ** 2))
-        p_change = (rmse_original - rmse_noisy) / rmse_original * 100
-
-        rmse_change[i] = p_change
+    # Compute RMSE for each column of y_pred
+    rmse_original = torch.sqrt(torch.mean((y_pred - y_true) ** 2, dim=0))  # Shape: (m,)
+    
+    # Compute RMSE for each column of y_pred_noisy
+    rmse_noisy = torch.sqrt(torch.mean((y_pred_noisy - y_true) ** 2, dim=0))  # Shape: (m,)
+    
+    # Calculate percentage change in RMSE
+    rmse_change = (rmse_noisy - rmse_original) / rmse_original * 100  # Shape: (m,)
     
     return rmse_change
+
 
 
 def plot_noise_diff(td_sgd: torch.Tensor, td_adam: torch.Tensor, nn_sgd: torch.Tensor, nn_adam: torch.Tensor) -> None:
