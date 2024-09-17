@@ -82,7 +82,7 @@ class TwoHiddenLayerNN:
     def reset(self) -> None:
         """Reset NN weights."""
         if not self.trained:
-            raise NNError('Model has not been trained.')
+            return
         for layer in self.model.children():
             if hasattr(layer, 'reset_parameters'):
                 layer.reset_parameters()
