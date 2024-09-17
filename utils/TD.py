@@ -50,8 +50,8 @@ class TemporalDifferenceLinear:
         self.epsilon = epsilon
         self.n_iter = int(n_iter)
         self.P = P
-        self.link = link if link else lambda x: x  # Identity function if None
-        self.inv_link = inv_link if inv_link else lambda x: x  # Identity function if None
+        self.link = link if link else lambda x: x 
+        self.inv_link = inv_link if inv_link else lambda x: x
 
         # Validate the transition matrix P
         if self.P is None:
