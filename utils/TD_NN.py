@@ -41,7 +41,7 @@ class TemporalDifferenceNN:
             output_size: int = 1,
             learning_rate: float = 0.01,
             gamma: float = 0,
-            epsilon: float = 1e-6,
+            epsilon: float = 0,
             P: torch.Tensor = None,
             link: Callable[[torch.Tensor], torch.Tensor] = None,
             inv_link: Callable[[torch.Tensor], torch.Tensor] = None,
@@ -124,11 +124,13 @@ class TemporalDifferenceNN:
                 epoch_loss += loss.item() * curr_x.size(0)
 
             # Early stopping based on loss
-            if epoch_loss < self.epsilon:
-                print(f'Ending optimization early at epoch {epoch+1}')
+            av_epoch_loss = epoch_loss / len(dataloader)
+            if av_epoch_loss < self.epsilon:
+                print(f'Ending optimization early at epoch {epoch+1} with loss {av_epoch_loss}')
                 break
 
         self.nn.trained = True
+        print(f"Training finished. Final epoch loss: {av_epoch_loss}")
 
     def predict(self, X: torch.Tensor) -> torch.Tensor:
         """Predict outputs for the given input X."""
