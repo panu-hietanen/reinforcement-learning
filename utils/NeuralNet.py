@@ -80,6 +80,7 @@ class TwoHiddenLayerNN:
         return rmse.item()
     
     def reset(self) -> None:
+        """Reset NN weights."""
         if not self.trained:
             raise NNError('Model has not been trained.')
         for layer in self.model.children():
