@@ -7,44 +7,62 @@ Date: 10/9/24
 Author: Panu Hietanen
 """
 import torch
-from torch.optim import Adam, SGD
+import torch.nn as nn
+import torch.optim as optim
 from typing import Callable
-from abc import ABC, abstractmethod
 
-
-class BaseTD(ABC):
-    """Class to perform optimization using generalised TD methods with torch tensors."""
-
+class TemporalDifferenceLinear:
     def __init__(
             self,
-            n_iter: int,
-            P: torch.Tensor,
-            link: Callable[[torch.Tensor], torch.Tensor],
-            inv_link: Callable[[torch.Tensor], torch.Tensor],
-            gamma: float,
-            alpha: float,
-            epsilon: float,
+            optimizer: str,
+            input_size: int,
+            output_size: int = 1,
+            learning_rate: float = 0.01,
+            gamma: float = 0,
+            epsilon: float = 0,
+            n_iter: int = 1000,
+            P: torch.Tensor = None,
+            link: Callable[[torch.Tensor], torch.Tensor] = None,
+            inv_link: Callable[[torch.Tensor], torch.Tensor] = None,
+            betas: tuple[float, float] = (0.9, 0.999),
             random_state: int = None,
-    ) -> None:
-        self.n_iter = n_iter
-        self.link = link
-        self.inv_link = inv_link
-        self.gamma = gamma
-        self.alpha = alpha
-        self.epsilon = epsilon
-
+        ) -> None:
         # Set seed for reproducibility
+        if random_state is not None:
+            torch.manual_seed(random_state)
+
+        # Initialize linear model
+        self.model = nn.Linear(input_size, output_size)
+
+        # Select optimizer
+        if optimizer == 'sgd':
+            self.optimizer = optim.SGD(self.model.parameters(), lr=learning_rate)
+        elif optimizer == 'adam':
+            self.optimizer = optim.Adam(self.model.parameters(), lr=learning_rate, betas=betas)
+        else:
+            raise ValueError("Optimizer must be 'sgd' or 'adam'")
+
+        # Mean Squared Error loss
+        self.criterion = nn.MSELoss()
+
+        # TD Learning parameters
+        self.gamma = gamma
+        self.epsilon = epsilon
+        self.n_iter = int(n_iter)
+        self.P = P
+        self.link = link if link else lambda x: x  # Identity function if None
+        self.inv_link = inv_link if inv_link else lambda x: x  # Identity function if None
+
+        # Validate the transition matrix P
+        if self.P is None:
+            raise ValueError("Transition matrix P must be provided.")
+        if not torch.allclose(self.P.sum(dim=1), torch.ones(self.P.size(0))):
+            raise ValueError("Each row of the transition matrix P must sum to 1.")
+
+        self.trained = False
         self.rng = torch.Generator()
         if random_state is not None:
             self.rng.manual_seed(random_state)
-
-        # Ensure P matrix sums to one (along rows)
-        if not torch.allclose(P.sum(dim=1), torch.ones(P.size(0))):
-            raise ValueError("Each row of the transition matrix P must sum to 1.")
-        self.P = P
-
-        self.weights = None
-        self.bias = None
 
     def sample_next_state(self, index: int) -> int:
         """Sample the next state based on the transition matrix P."""
@@ -52,151 +70,99 @@ class BaseTD(ABC):
         next_state = torch.multinomial(probs, 1, generator=self.rng)
         return next_state.item()
 
-    def predict(self, X: torch.Tensor) -> torch.Tensor:
-        if self.weights is None:
-            raise TDError("Please use the fit function first!")
-        return torch.matmul(X, self.weights) + self.bias
-
-    def rmse(self, X: torch.Tensor, y: torch.Tensor) -> float:
-        if self.weights is None:
-            raise TDError("Please use the fit function first!")
-        y_hat = self.predict(X)
-        error = y_hat - y
-        return torch.sqrt(torch.mean(torch.pow(error, 2)))
-
-    def reset(self) -> None:
-        """Reset the model's weights and bias."""
-        self.weights = self.bias = None
-
-    @abstractmethod
-    def fit(self, X: torch.Tensor, y: torch.Tensor) -> None:
-        pass
-
-
-class TD_SGD(BaseTD):
     def fit(self, X: torch.Tensor, y: torch.Tensor) -> None:
         n_samples, n_features = X.shape
 
         if y.size(0) != n_samples:
-            raise TDError("Ensure there are the same number of target samples as feature samples.")
+            raise ValueError("Ensure there are the same number of target samples as feature samples.")
 
-        X_bias = torch.cat([torch.ones(n_samples, 1), X], dim=1)
-        w = torch.zeros(n_features + 1)
+        # Ensure inputs are tensors
+        if not isinstance(X, torch.Tensor):
+            X = torch.tensor(X, dtype=torch.float32)
+        if not isinstance(y, torch.Tensor):
+            y = torch.tensor(y, dtype=torch.float32)
+
+        # Set the model to training mode
+        self.model.train()
 
         curr_index = torch.randint(0, n_samples, (1,), generator=self.rng).item()
-        curr_x = X_bias[curr_index]
+        curr_x = X[curr_index].unsqueeze(0)  # Add batch dimension
         curr_y = y[curr_index]
 
-        i = 0
-        grad = torch.full_like(w, float(0))
-
-        while i < self.n_iter:
+        for i in range(self.n_iter):
             # Next state samples
             next_index = self.sample_next_state(curr_index)
-            next_x = X_bias[next_index]
+            next_x = X[next_index].unsqueeze(0)  # Add batch dimension
             next_y = y[next_index]
 
-            # Find predictions
-            curr_z = torch.dot(curr_x, w)
-            next_z = torch.dot(next_x, w)
+            # Zero the gradients
+            self.optimizer.zero_grad()
 
-            # Find rewards
+            # Forward pass for current and next states
+            curr_z = self.model(curr_x).squeeze()
+            with torch.no_grad():
+                next_z = self.model(next_x).squeeze()
+
+            # Compute reward
             r = self.inv_link(curr_y) - self.gamma * self.inv_link(next_y)
 
             # TD target
             z_t = r + self.gamma * next_z
 
-            # Find gradient
-            grad = (self.link(curr_z) - self.link(z_t)) * curr_x
+            # Compute loss
+            loss = self.criterion(self.link(curr_z), self.link(z_t))
 
-            # Update weights
-            w -= self.alpha * grad
-
-            # Update state and index
-            curr_index, curr_x, curr_y = next_index, next_x, next_y
-            i += 1
-
-            # Early stopping if the gradient is small enough
-            if torch.norm(self.alpha * grad) < self.epsilon:
-                print(f'Ending optimization early at iteration {i}')
-                break
-
-        self.weights = w[1:]  # Separate weights from bias
-        self.bias = w[0]
-
-
-class TD_Adam(BaseTD):
-    def __init__(
-                self,
-                n_iter: int,
-                P: torch.Tensor,
-                link: Callable[[torch.Tensor], torch.Tensor],
-                inv_link: Callable[[torch.Tensor], torch.Tensor],
-                gamma: float,
-                alpha: float,
-                epsilon: float,
-                betas: tuple[float, float] = (0.9, 0.999),
-                random_state: int = None,
-        ) -> None:
-        super(TD_Adam, self).__init__(n_iter, P, link, inv_link, gamma, alpha, epsilon, random_state)
-        self.betas = betas
-
-
-    def fit(self, X: torch.Tensor, y: torch.Tensor) -> None:
-        n_samples, n_features = X.shape
-
-        if y.size(0) != n_samples:
-            raise TDError("Ensure there are the same number of target samples as feature samples.")
-
-        X_bias = torch.cat([torch.ones(n_samples, 1), X], dim=1)
-        w = torch.zeros(n_features + 1, requires_grad=True)
-
-        # Initialise optimizer
-        optimizer = Adam([w], lr=self.alpha, betas=self.betas)
-
-        curr_index = torch.randint(0, n_samples, (1,), generator=self.rng).item()
-        curr_x = X_bias[curr_index]
-        curr_y = y[curr_index]
-
-        i = 0
-
-        while i < self.n_iter:
-            # Next state samples
-            next_index = self.sample_next_state(curr_index)
-            next_x = X_bias[next_index]
-            next_y = y[next_index]
-
-            optimizer.zero_grad()
-
-            # Find predictions
-            curr_z = torch.dot(curr_x, w)
-            next_z = torch.dot(next_x, w)
-
-            # Find rewards
-            r = self.inv_link(curr_y) - self.gamma * self.inv_link(next_y)
-
-            # TD target
-            z_t = r + self.gamma * next_z
-
-            # Find loss
-            loss = (self.link(curr_z) - self.link(z_t)) ** 2 / 2
-
-            # Update weights
+            # Backward pass and optimization
             loss.backward()
-            optimizer.step()
-
-            # Update state and index
-            curr_index, curr_x, curr_y = next_index, next_x, next_y
-            i += 1
+            self.optimizer.step()
 
             # Early stopping based on loss
             if loss.item() < self.epsilon:
-                print(f'Ending optimization early at iteration {i}')
+                print(f'Ending optimization early at iteration {i+1}')
                 break
 
-        self.weights = w.detach()[1:]  # Separate weights from bias
-        self.bias = w.detach()[0]
+            # Update current state
+            curr_index = next_index
+            curr_x = next_x
+            curr_y = next_y
 
+        self.trained = True
+
+    def predict(self, X: torch.Tensor) -> torch.Tensor:
+        """Predict outputs for the given input X."""
+        if not self.trained:
+            raise TDError('Model has not been trained.')
+        # Ensure input is a tensor
+        if not isinstance(X, torch.Tensor):
+            X = torch.tensor(X, dtype=torch.float32)
+        self.model.eval()
+        with torch.no_grad():
+            outputs = self.model(X)
+        return outputs.squeeze()
+
+    def rmse(self, X: torch.Tensor, y: torch.Tensor) -> float:
+        """Calculate the RMSE between the model predictions and targets."""
+        if not self.trained:
+            raise TDError('Model has not been trained.')
+        # Ensure inputs are tensors
+        if not isinstance(X, torch.Tensor):
+            X = torch.tensor(X, dtype=torch.float32)
+        if not isinstance(y, torch.Tensor):
+            y = torch.tensor(y, dtype=torch.float32)
+        with torch.no_grad():
+            outputs = self.predict(X)
+            mse_loss = self.criterion(outputs, y)
+            rmse = torch.sqrt(mse_loss)
+        return rmse.item()
+
+    def reset(self) -> None:
+        """Reset model weights."""
+        if not self.trained:
+            return
+        for layer in self.model.children():
+            if hasattr(layer, 'reset_parameters'):
+                layer.reset_parameters()
+        self.trained = False
 
 class TDError(Exception):
     pass
