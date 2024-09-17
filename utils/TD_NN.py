@@ -124,3 +124,7 @@ class TemporalDifferenceNN:
     def rmse(self, X: torch.Tensor, y: torch.Tensor) -> float:
         """Calculate the RMSE between the model predictions and targets."""
         return self.nn.rmse(X, y)
+
+    def reset(self) -> None:
+        """Reset NN weights."""
+        self.nn.reset()
