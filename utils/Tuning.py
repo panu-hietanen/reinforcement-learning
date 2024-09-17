@@ -29,7 +29,6 @@ def create_model_td(
         learning_rate: float,
         gamma: float,
         epsilon: float,
-        n_iter: int,
         P: torch.Tensor,
         betas: tuple[float, float] = (0.9, 0.999),
         random_state: int = None,
@@ -42,7 +41,6 @@ def create_model_td(
         learning_rate=learning_rate,
         gamma=gamma,
         epsilon=epsilon,
-        n_iter=n_iter,
         P=P,
         betas=betas,
         random_state=random_state,
@@ -115,7 +113,7 @@ def random_search(
                 learning_rate = random.choice(param_grid['learning_rate'])
                 gamma = random.choice(param_grid['gamma'])
                 epsilon = random.choice(param_grid['epsilon'])
-                n_iter = random.choice(param_grid['n_iter'])
+                epochs = random.choice(param_grid['epochs'])
                 betas = random.choice(param_grid.get('betas', [(0.9, 0.999)]))
             except KeyError as e:
                 print('Please provide a correctly formatted parameter grid. The following is not included:')
@@ -124,7 +122,7 @@ def random_search(
 
             print(f"Iteration {i+1}: Training TD with optimizer={optimizer_type}, "
                   f"learning_rate={learning_rate}, gamma={gamma}, epsilon={epsilon}, "
-                  f"n_iter={n_iter}, betas={betas}")
+                  f"epochs={epochs}, betas={betas}")
 
             # Create the transition matrix P (example with uniform probability)
             num_samples = X_train.shape[0]
@@ -137,7 +135,6 @@ def random_search(
                 learning_rate=learning_rate,
                 gamma=gamma,
                 epsilon=epsilon,
-                n_iter=n_iter,
                 P=P,
                 betas=betas,
                 random_state=random_state,
@@ -145,7 +142,7 @@ def random_search(
                 inv_link=lambda x: x  # Identity inverse link function
             )
 
-            model.fit(X_train, y_train)
+            model.fit(X_train, y_train, epochs=epochs)
             loss = model.rmse(X_val, y_val)
 
             print(f"Validation RMSE for TD: {loss:.4f}")
@@ -158,7 +155,7 @@ def random_search(
                     'learning_rate': learning_rate,
                     'gamma': gamma,
                     'epsilon': epsilon,
-                    'n_iter': n_iter,
+                    'epochs': epochs,
                     'betas': betas
                 }
 
