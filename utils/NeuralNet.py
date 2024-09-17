@@ -86,6 +86,7 @@ class TwoHiddenLayerNN:
         for layer in self.model.children():
             if hasattr(layer, 'reset_parameters'):
                 layer.reset_parameters()
+        self.trained = False
 
 class NNError(Exception):
     pass

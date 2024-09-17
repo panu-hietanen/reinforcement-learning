@@ -51,9 +51,7 @@ class TemporalDifferenceNN:
             raise ValueError("Transition matrix P must be provided.")
         if not torch.allclose(self.P.sum(dim=1), torch.ones(self.P.size(0))):
             raise ValueError("Each row of the transition matrix P must sum to 1.")
-
-        self.trained = False
-
+        
     def sample_next_state(self, index: int) -> int:
         """Sample the next state based on the transition matrix P."""
         probs = self.P[index]
@@ -114,8 +112,6 @@ class TemporalDifferenceNN:
             curr_index = next_index
             curr_x = next_x
             curr_y = next_y
-
-        self.trained = True
 
     def predict(self, X: torch.Tensor) -> torch.Tensor:
         """Predict outputs for the given input X."""
