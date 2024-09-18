@@ -111,10 +111,16 @@ def random_search_nn(
     return best_params
 
 def train_and_evaluate_nn(
-        X_train, y_train, X_val, y_val,
-        optimizer_type, learning_rate, epochs, betas,
-        random_state
-    ):
+        X_train: torch.Tensor, 
+        y_train: torch.Tensor, 
+        X_val: torch.Tensor, 
+        y_val: torch.Tensor,
+        optimizer_type: str, 
+        learning_rate: float, 
+        epochs: int, 
+        betas: tuple[float, float],
+        random_state: int,
+    ) -> tuple[float, Dict[str, Any]]:
     # Set random seed for reproducibility
     if random_state is not None:
         torch.manual_seed(random_state)
@@ -209,10 +215,19 @@ def random_search_td(
     return best_params
 
 def train_and_evaluate_td(
-        X_train, y_train, X_val, y_val,
-        optimizer_type, learning_rate, gamma, epsilon, epochs, betas, P,
-        random_state
-    ):
+        X_train: torch.Tensor, 
+        y_train: torch.Tensor, 
+        X_val: torch.Tensor, 
+        y_val: torch.Tensor,
+        optimizer_type: str, 
+        learning_rate: float, 
+        gamma: float, 
+        epsilon: float, 
+        epochs: int,
+        betas: tuple[float, float], 
+        P: torch.Tensor,
+        random_state: int,
+    ) -> tuple[float, Dict[str, Any]]:
     # Set random seed for reproducibility
     if random_state is not None:
         torch.manual_seed(random_state)
