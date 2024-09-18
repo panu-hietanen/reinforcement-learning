@@ -48,9 +48,8 @@ def create_model_td(
         inv_link=inv_link
     )
 
-# Define the function to perform random search
-def random_search(
-        model_type: str,
+# Function to perform random search for the neural network model
+def random_search_nn(
         X_train: torch.Tensor, 
         y_train: torch.Tensor, 
         X_val: torch.Tensor, 
@@ -63,104 +62,113 @@ def random_search(
     best_loss = float('inf')
     best_params = None
 
-    if model_type == 'nn':
-        for i in range(n_iter_search):
-            # Randomly sample a set of hyperparameters
-            try:
-                optimizer_type = optimizer or random.choice(['sgd', 'adam'])
-                learning_rate = random.choice(param_grid['learning_rate'])
-                epochs = random.choice(param_grid['epochs'])
-                betas = random.choice(param_grid.get('betas', [(0.9, 0.999)]))
-            except KeyError:
-                print('Please provide a correctly formatted parameter grid.')
-                return None
+    for i in range(n_iter_search):
+        # Randomly sample a set of hyperparameters
+        try:
+            optimizer_type = optimizer or random.choice(['sgd', 'adam'])
+            learning_rate = random.choice(param_grid['learning_rate'])
+            epochs = random.choice(param_grid['epochs'])
+            betas = random.choice(param_grid.get('betas', [(0.9, 0.999)]))
+        except KeyError:
+            print('Please provide a correctly formatted parameter grid.')
+            return None
 
-            print(f"Iteration {i+1}: Training NN with optimizer={optimizer_type}, "
-                  f"learning_rate={learning_rate}, epochs={epochs}, betas={betas}")
+        print(f"Iteration {i+1}: Training NN with optimizer={optimizer_type}, "
+              f"learning_rate={learning_rate}, epochs={epochs}, betas={betas}")
 
-            # Create and evaluate the model with the sampled hyperparameters
-            model = create_model_nn(
-                optimizer_type=optimizer_type,
-                input_size=X_train.shape[1],
-                output_size=1,
-                learning_rate=learning_rate,
-                betas=betas,
-            )
+        # Create and evaluate the model with the sampled hyperparameters
+        model = create_model_nn(
+            optimizer_type=optimizer_type,
+            input_size=X_train.shape[1],
+            output_size=1,
+            learning_rate=learning_rate,
+            betas=betas,
+        )
 
-            model.fit(X_train, y_train, epochs=epochs)
-            loss = model.rmse(X_val, y_val)
+        model.fit(X_train, y_train, epochs=epochs)
+        loss = model.rmse(X_val, y_val)
 
-            print(f"Validation RMSE: {loss:.4f}")
+        print(f"Validation RMSE: {loss:.4f}")
 
-            # Track the best set of hyperparameters
-            if loss < best_loss:
-                best_loss = loss
-                best_params = {
-                    'optimizer_type': optimizer_type,
-                    'learning_rate': learning_rate,
-                    'epochs': epochs,
-                    'betas': betas
-                }
+        # Track the best set of hyperparameters
+        if loss < best_loss:
+            best_loss = loss
+            best_params = {
+                'optimizer_type': optimizer_type,
+                'learning_rate': learning_rate,
+                'epochs': epochs,
+                'betas': betas
+            }
 
-        print(f"Best hyperparameters: {best_params}, Best RMSE: {best_loss:.4f}")
-        return best_params
+    print(f"Best hyperparameters: {best_params}, Best RMSE: {best_loss:.4f}")
+    return best_params
 
-    elif model_type == 'td':
-        for i in range(n_iter_search):
-            # Randomly sample a set of hyperparameters
-            try:
-                optimizer_type = optimizer or random.choice(['sgd', 'adam'])
-                learning_rate = random.choice(param_grid['learning_rate'])
-                gamma = random.choice(param_grid['gamma'])
-                epsilon = random.choice(param_grid['epsilon'])
-                epochs = random.choice(param_grid['epochs'])
-                betas = random.choice(param_grid.get('betas', [(0.9, 0.999)]))
-            except KeyError as e:
-                print('Please provide a correctly formatted parameter grid. The following is not included:')
-                print(e)
-                return None
+# Function to perform random search for the TD model
+def random_search_td(
+        X_train: torch.Tensor, 
+        y_train: torch.Tensor, 
+        X_val: torch.Tensor, 
+        y_val: torch.Tensor, 
+        param_grid: dict[str, Any], 
+        n_iter_search: int = 10, 
+        optimizer: str = None,
+        random_state: int = None
+    ) -> dict[str, Any]:
+    best_loss = float('inf')
+    best_params = None
 
-            print(f"Iteration {i+1}: Training TD with optimizer={optimizer_type}, "
-                  f"learning_rate={learning_rate}, gamma={gamma}, epsilon={epsilon}, "
-                  f"epochs={epochs}, betas={betas}")
+    for i in range(n_iter_search):
+        # Randomly sample a set of hyperparameters
+        try:
+            optimizer_type = optimizer or random.choice(['sgd', 'adam'])
+            learning_rate = random.choice(param_grid['learning_rate'])
+            gamma = random.choice(param_grid['gamma'])
+            epsilon = random.choice(param_grid['epsilon'])
+            epochs = random.choice(param_grid['epochs'])
+            betas = random.choice(param_grid.get('betas', [(0.9, 0.999)]))
+        except KeyError as e:
+            print('Please provide a correctly formatted parameter grid. The following is not included:')
+            print(e)
+            return None
 
-            # Create the transition matrix P (example with uniform probability)
-            num_samples = X_train.shape[0]
-            P = torch.ones((num_samples, num_samples)) / num_samples  # Equal probability for each state
+        print(f"Iteration {i+1}: Training TD with optimizer={optimizer_type}, "
+              f"learning_rate={learning_rate}, gamma={gamma}, epsilon={epsilon}, "
+              f"epochs={epochs}, betas={betas}")
 
-            # Create and evaluate the TD model
-            model = create_model_td(
-                optimizer_type=optimizer_type,
-                input_size=X_train.shape[1],
-                learning_rate=learning_rate,
-                gamma=gamma,
-                epsilon=epsilon,
-                P=P,
-                betas=betas,
-                random_state=random_state,
-                link=lambda x: x,  # Identity link function
-                inv_link=lambda x: x  # Identity inverse link function
-            )
+        # Create the transition matrix P (example with uniform probability)
+        num_samples = X_train.shape[0]
+        P = torch.ones((num_samples, num_samples)) / num_samples  # Equal probability for each state
 
-            model.fit(X_train, y_train, epochs=epochs)
-            loss = model.rmse(X_val, y_val)
+        # Create and evaluate the TD model
+        model = create_model_td(
+            optimizer_type=optimizer_type,
+            input_size=X_train.shape[1],
+            learning_rate=learning_rate,
+            gamma=gamma,
+            epsilon=epsilon,
+            P=P,
+            betas=betas,
+            random_state=random_state,
+            link=lambda x: x,  # Identity link function
+            inv_link=lambda x: x  # Identity inverse link function
+        )
 
-            print(f"Validation RMSE for TD: {loss:.4f}")
+        model.fit(X_train, y_train, epochs=epochs)
+        loss = model.rmse(X_val, y_val)
 
-            # Track the best set of hyperparameters
-            if loss < best_loss:
-                best_loss = loss
-                best_params = {
-                    'optimizer_type': optimizer_type,
-                    'learning_rate': learning_rate,
-                    'gamma': gamma,
-                    'epsilon': epsilon,
-                    'epochs': epochs,
-                    'betas': betas
-                }
+        print(f"Validation RMSE for TD: {loss:.4f}")
 
-        print(f"Best hyperparameters for TD: {best_params}, Best RMSE: {best_loss:.4f}")
-        return best_params
+        # Track the best set of hyperparameters
+        if loss < best_loss:
+            best_loss = loss
+            best_params = {
+                'optimizer_type': optimizer_type,
+                'learning_rate': learning_rate,
+                'gamma': gamma,
+                'epsilon': epsilon,
+                'epochs': epochs,
+                'betas': betas
+            }
 
-    else:
-        raise ValueError("Please set model_type to 'nn' or 'td'.")
+    print(f"Best hyperparameters for TD: {best_params}, Best RMSE: {best_loss:.4f}")
+    return best_params
